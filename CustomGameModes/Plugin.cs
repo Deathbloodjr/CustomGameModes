@@ -96,20 +96,29 @@ namespace CustomGameModes
                 "The file location for all of this mod's asset data.");
         }
 
-        private const string ASSETBUNDLE_NAME = "danidojo.scene";
+        private const string ASSETBUNDLE_NAME = "CustomGameModes.scene";
+        private const string ALT_ASSETBUNDLE_NAME = "danidojo.scene";
         public static AssetBundle Assets;
         private void InitializeDaniDojoSceneAssetBundle()
         {
             Plugin.Log.LogInfo("CustomGameMode scene load start");
             string assetBundlePath = Path.Combine(ConfigAssetLocation.Value, ASSETBUNDLE_NAME);
-            if (!File.Exists(assetBundlePath))
+            if (File.Exists(assetBundlePath))
+            {
+                Assets = AssetBundle.LoadFromFile(assetBundlePath);
+                Plugin.Log.LogInfo("CustomGameMode scene loaded");
+            }
+            else if (File.Exists(Path.Combine(ConfigAssetLocation.Value, ALT_ASSETBUNDLE_NAME)))
+            {
+                Assets = AssetBundle.LoadFromFile(Path.Combine(ConfigAssetLocation.Value, ALT_ASSETBUNDLE_NAME));
+                Plugin.Log.LogInfo("CustomGameMode scene loaded");
+            }
+            else
             {
                 Assets = null;
-                Plugin.Log.LogInfo("CustomGameMode scene asset not found?");
+                Log.LogInfo("CustomGameMode scene asset not found at location: " + assetBundlePath);
                 return;
             }
-            Assets = AssetBundle.LoadFromFile(assetBundlePath);
-            Plugin.Log.LogInfo("CustomGameMode scene loaded?");
         }
 
         private void SetupHarmony()
