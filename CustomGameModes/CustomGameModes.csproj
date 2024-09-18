@@ -68,7 +68,8 @@
   </ItemGroup>
   
   <Target Name="PostBuildCopy" AfterTargets="PostBuildEvent">
-    <Copy SourceFiles="$(TargetDir)$(AssemblyName).dll" DestinationFolder="$(GameDir)\BepInEx\plugins" />
+	<Copy SourceFiles="$(TargetDir)$(AssemblyName).dll" DestinationFolder="$(GameDir)\BepInEx\plugins\$(AssemblyName)" />
+	<Copy Condition="$(DefineConstants.Contains('DEBUG'))" SourceFiles="$(TargetDir)$(AssemblyName).pdb" DestinationFolder="$(GameDir)\BepInEx\plugins\$(AssemblyName)" />
   </Target>
 
 </Project>

@@ -92,7 +92,7 @@ namespace CustomGameModes
 
             ConfigAssetLocation = Config.Bind("Data",
                 "AssetLocation",
-                Path.Combine(dataFolder, "Assets"),
+                Path.Combine(dataFolder),
                 "The file location for all of this mod's asset data.");
         }
 
@@ -128,6 +128,11 @@ namespace CustomGameModes
 
             if (ConfigEnabled.Value)
             {
+                if (!Directory.Exists(ConfigAssetLocation.Value))
+                {
+                    Directory.CreateDirectory(ConfigAssetLocation.Value);
+                }
+
                 _harmony.PatchAll(typeof(CustomModeSelectMenu));
 
                 Log.LogInfo($"Plugin {PluginInfo.PLUGIN_NAME} is loaded!");
