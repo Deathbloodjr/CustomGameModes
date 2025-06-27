@@ -231,7 +231,12 @@ namespace CustomGameModes.Utility
                 // Instead of null, could I have this return just a 1x1 transparent sprite or something?
 
                 // Creates a transparent 2x2 texture, and returns that as the sprite
+#if TAIKO_MONO
                 Texture2D tex = new Texture2D(2, 2, TextureFormat.ARGB32, 1, false);
+#else
+                Texture2D tex = new Texture2D(2, 2, TextureFormat.ARGB32, 1, false, IntPtr.Zero);
+#endif
+
                 Color fillColor = Color.clear;
                 Color[] fillPixels = new Color[tex.width * tex.height];
                 for (int i = 0; i < fillPixels.Length; i++)
@@ -596,7 +601,17 @@ namespace CustomGameModes.Utility
 
 
             // Fill Content
+#if TAIKO_MONO
             dropdownDropdown.AddOptions(options);
+#else
+            var il2cppOptions = new Il2CppSystem.Collections.Generic.List<string>();
+            for (int i = 0; i < options.Count; i++)
+            {
+                il2cppOptions.Add(options[i]);
+            }
+            dropdownDropdown.AddOptions(il2cppOptions);
+#endif
+
 
             return dropdownObject;
         }
@@ -675,7 +690,12 @@ namespace CustomGameModes.Utility
 
         static private Sprite LoadSpriteFromFile(string spriteFilePath)
         {
+#if TAIKO_MONO
             Texture2D tex = new Texture2D(2, 2, TextureFormat.ARGB32, 1, false);
+#else
+            Texture2D tex = new Texture2D(2, 2, TextureFormat.ARGB32, 1, false, IntPtr.Zero);
+#endif
+
             if (!File.Exists(spriteFilePath))
             {
                 Plugin.Log.LogError("Could not find file: " + spriteFilePath);
@@ -683,7 +703,11 @@ namespace CustomGameModes.Utility
             }
             else
             {
+#if TAIKO_MONO
                 tex.LoadImage(File.ReadAllBytes(spriteFilePath));
+#else
+                ImageConversion.LoadImage(tex, File.ReadAllBytes(spriteFilePath));
+#endif
             }
 
 
@@ -721,7 +745,7 @@ namespace CustomGameModes.Utility
 
 
 
-        #endregion
+#endregion
 
 
         #region RectTransform

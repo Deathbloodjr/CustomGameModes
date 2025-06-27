@@ -7,11 +7,18 @@ using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+#if TAIKO_IL2CPP
+using Il2CppInterop.Runtime.Injection;
+#endif
 
 namespace CustomGameModes.Patches
 {
     internal class CustomModeSelection : MonoBehaviour
     {
+#if TAIKO_IL2CPP
+        static CustomModeSelection() => ClassInjector.RegisterTypeInIl2Cpp<CustomModeSelection>();
+#endif
+
         int currentIndex = 0;
 
         GameObject selectedImage = null;

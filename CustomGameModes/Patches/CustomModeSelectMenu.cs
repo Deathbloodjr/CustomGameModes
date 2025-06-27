@@ -82,7 +82,15 @@ namespace CustomGameModes.Patches
             {
                 __instance.selectedItem = buttonIndex;
                 __instance.UpdateButtonDisplay(playAnim);
-                __instance.SetText(__instance.helpText, "mode_select_desc_dani_dojo", DataConst.DescriptionFontMaterialType.Plane);
+
+                var text = __instance.helpText;
+                var key = "mode_select_desc_dani_dojo";
+#if TAIKO_MONO
+                __instance.SetText(text, key, DataConst.DescriptionFontMaterialType.Plane);
+#else
+                __instance.SetText(ref text, ref key, DataConst.DescriptionFontMaterialType.Plane);
+#endif
+
                 TaikoSingletonMonoBehaviour<CommonObjects>.Instance.MySoundManager.CommonSePlay("katsu", false, false);
                 return false;
             }
