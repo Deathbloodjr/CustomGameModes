@@ -14,31 +14,22 @@ using System.Reflection;
 using System.Linq;
 
 
-#if TAIKO_IL2CPP
+#if IL2CPP
 using BepInEx.Unity.IL2CPP.Utils;
 using BepInEx.Unity.IL2CPP;
 #endif
 
 namespace CustomGameModes
 {
-    internal enum LogType
-    {
-        Info,
-        Warning,
-        Error,
-        Fatal,
-        Message,
-        Debug
-    }
 
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, ModName, PluginInfo.PLUGIN_VERSION)]
-#if TAIKO_MONO
+    [BepInPlugin(MyPluginInfo.PLUGIN_GUID, ModName, MyPluginInfo.PLUGIN_VERSION)]
+#if MONO
     internal class Plugin : BaseUnityPlugin
-#elif TAIKO_IL2CPP
+#elif IL2CPP
     internal class Plugin : BasePlugin
 #endif
     {
-        const string ModName = "CustomGameModes";
+        public const string ModName = "CustomGameModes";
 
         public static Plugin Instance;
         private Harmony _harmony;
@@ -47,48 +38,39 @@ namespace CustomGameModes
         public ConfigEntry<bool> ConfigEnabled;
         public ConfigEntry<string> ConfigAssetLocation;
 
-        public ConfigEntry<bool> ConfigLoggingEnabled;
-        public ConfigEntry<int> ConfigLoggingDetailLevelEnabled;
-
-#if TAIKO_MONO
+#if MONO
         private void Awake()
-#elif TAIKO_IL2CPP
+#elif IL2CPP
         public override void Load()
 #endif
         {
             Instance = this;
 
-#if TAIKO_MONO
+#if MONO
             Log = Logger;
-#elif TAIKO_IL2CPP
+#elif IL2CPP
             Log = base.Log;
 #endif
 
-            SetupConfig();
+            SetupConfig(Config, Path.Combine("BepInEx", "data", ModName));
 
             InitializeDaniDojoSceneAssetBundle();
 
             SetupHarmony();
+
         }
 
-        private void SetupConfig()
+        private void SetupConfig(ConfigFile config, string saveFolder, bool isSaveManager = false)
         {
             var dataFolder = Path.Combine("BepInEx", "data", ModName);
 
-            ConfigEnabled = Config.Bind("General",
-                "Enabled",
-                true,
-                "Enables the mod.");
-
-            ConfigLoggingEnabled = Config.Bind("Debug",
-                "LoggingEnabled",
-                true,
-                "Enables logs to be sent to the console.");
-
-            ConfigLoggingDetailLevelEnabled = Config.Bind("Debug",
-                "LoggingDetailLevelEnabled",
-                0,
-                "Enables more detailed logs to be sent to the console. The higher the number, the more logs will be displayed. Mostly for my own debugging.");
+            if (!isSaveManager)
+            {
+                ConfigEnabled = config.Bind("General",
+                   "Enabled",
+                   true,
+                   "Enables the mod.");
+            }
 
             ConfigAssetLocation = Config.Bind("Data",
                 "AssetLocation",
@@ -101,111 +83,112 @@ namespace CustomGameModes
         public static AssetBundle Assets;
         private void InitializeDaniDojoSceneAssetBundle()
         {
-            Plugin.Log.LogInfo("CustomGameMode scene load start");
+            ModLogger.Log("CustomGameMode scene load start");
             string assetBundlePath = Path.Combine(ConfigAssetLocation.Value, ASSETBUNDLE_NAME);
             if (File.Exists(assetBundlePath))
             {
                 Assets = AssetBundle.LoadFromFile(assetBundlePath);
-                Plugin.Log.LogInfo("CustomGameMode scene loaded");
+                ModLogger.Log("CustomGameMode scene loaded");
             }
             else if (File.Exists(Path.Combine(ConfigAssetLocation.Value, ALT_ASSETBUNDLE_NAME)))
             {
                 Assets = AssetBundle.LoadFromFile(Path.Combine(ConfigAssetLocation.Value, ALT_ASSETBUNDLE_NAME));
-                Plugin.Log.LogInfo("CustomGameMode scene loaded");
+                ModLogger.Log("CustomGameMode scene loaded");
             }
             else
             {
                 Assets = null;
-                Log.LogInfo("CustomGameMode scene asset not found at location: " + assetBundlePath);
+                ModLogger.Log("CustomGameMode scene asset not found at location: " + assetBundlePath);
                 return;
             }
         }
+
 
         private void SetupHarmony()
         {
             // Patch methods
-            _harmony = new Harmony(PluginInfo.PLUGIN_GUID);
+            _harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
 
-            if (ConfigEnabled.Value)
+            LoadPlugin(ConfigEnabled.Value);
+        }
+
+        public static void LoadPlugin(bool enabled)
+        {
+            if (enabled)
             {
-                if (!Directory.Exists(ConfigAssetLocation.Value))
+                bool result = true;
+                if (!Directory.Exists(Instance.ConfigAssetLocation.Value))
                 {
-                    Directory.CreateDirectory(ConfigAssetLocation.Value);
+                    Directory.CreateDirectory(Instance.ConfigAssetLocation.Value);
                 }
-
-                _harmony.PatchAll(typeof(CustomModeSelectMenu));
-
-                Log.LogInfo($"Plugin {PluginInfo.PLUGIN_NAME} is loaded!");
+                // If any PatchFile fails, result will become false
+                result &= Instance.PatchFile(typeof(CustomModeSelectMenu));
+                if (result)
+                {
+                    ModLogger.Log($"Plugin {MyPluginInfo.PLUGIN_NAME} is loaded!");
+                }
+                else
+                {
+                    ModLogger.Log($"Plugin {MyPluginInfo.PLUGIN_GUID} failed to load.", LogType.Error);
+                    // Unload this instance of Harmony
+                    // I hope this works the way I think it does
+                    Instance._harmony.UnpatchSelf();
+                }
             }
             else
             {
-                Log.LogInfo($"Plugin {PluginInfo.PLUGIN_NAME} is disabled.");
+                ModLogger.Log($"Plugin {MyPluginInfo.PLUGIN_NAME} is disabled.");
             }
         }
 
-        
+        private bool PatchFile(Type type)
+        {
+            if (_harmony == null)
+            {
+                _harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
+            }
+            try
+            {
+                _harmony.PatchAll(type);
+#if DEBUG
+                ModLogger.Log("File patched: " + type.FullName);
+#endif
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModLogger.Log("Failed to patch file: " + type.FullName);
+                ModLogger.Log(e.Message);
+                return false;
+            }
+        }
+
+        public static void UnloadPlugin()
+        {
+            Instance._harmony.UnpatchSelf();
+            ModLogger.Log($"Plugin {MyPluginInfo.PLUGIN_NAME} has been unpatched.");
+        }
+
+        public static void ReloadPlugin()
+        {
+            // Reloading will always be completely different per mod
+            // You'll want to reload any config file or save data that may be specific per profile
+            // If there's nothing to reload, don't put anything here, and keep it commented in AddToSaveManager
+            //SwapSongLanguagesPatch.InitializeOverrideLanguages();
+            //TaikoSingletonMonoBehaviour<CommonObjects>.Instance.MyDataManager.MusicData.Reload();
+        }
+
+
 
         public static MonoBehaviour GetMonoBehaviour() => TaikoSingletonMonoBehaviour<CommonObjects>.Instance;
 
-        public void StartCustomCoroutine(IEnumerator enumerator)
+        public void StartCoroutine(IEnumerator enumerator)
         {
-#if TAIKO_MONO
+#if MONO
             GetMonoBehaviour().StartCoroutine(enumerator);
-#elif TAIKO_IL2CPP
+#elif IL2CPP
             GetMonoBehaviour().StartCoroutine(enumerator);
 #endif
         }
-
-        public void LogInfoInstance(LogType type, string value, int detailLevel = 0)
-        {
-            if (ConfigLoggingEnabled.Value && (ConfigLoggingDetailLevelEnabled.Value >= detailLevel))
-            {
-                switch (type)
-                {
-                    case LogType.Info:
-                        Log.LogInfo("[" + detailLevel + "] " + value);
-                        break;
-                    case LogType.Warning:
-                        Log.LogWarning("[" + detailLevel + "] " + value);
-                        break;
-                    case LogType.Error:
-                        Log.LogError("[" + detailLevel + "] " + value);
-                        break;
-                    case LogType.Fatal:
-                        Log.LogFatal("[" + detailLevel + "] " + value);
-                        break;
-                    case LogType.Message:
-                        Log.LogMessage("[" + detailLevel + "] " + value);
-                        break;
-                    case LogType.Debug:
-                        // I'm not sure if I should make this only happen in DEBUG mode
-                        // Seems like a decent idea, I'll keep it until it seems like a bad idea
-#if DEBUG
-                        Log.LogDebug("[" + detailLevel + "] " + value);
-#endif
-                        break;
-                    default:
-                        break;
-                }
-            }
-        }
-        public static void LogInfo(LogType type, string value, int detailLevel = 0)
-        {
-            Instance.LogInfoInstance(type, value, detailLevel);
-        }
-        public static void LogInfo(LogType type, List<string> value, int detailLevel = 0)
-        {
-            if (value.Count == 0)
-            {
-                return;
-            }
-            string sendValue = value[0];
-            for (int i = 1; i < value.Count; i++)
-            {
-                sendValue += "\n" + value[i];
-            }
-            Instance.LogInfoInstance(type, sendValue, detailLevel);
-        }
-
     }
 }

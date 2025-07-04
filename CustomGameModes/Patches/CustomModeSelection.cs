@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-#if TAIKO_IL2CPP
+#if IL2CPP
 using Il2CppInterop.Runtime.Injection;
 #endif
 
@@ -15,7 +15,7 @@ namespace CustomGameModes.Patches
 {
     internal class CustomModeSelection : MonoBehaviour
     {
-#if TAIKO_IL2CPP
+#if IL2CPP
         static CustomModeSelection() => ClassInjector.RegisterTypeInIl2Cpp<CustomModeSelection>();
 #endif
 
@@ -61,7 +61,7 @@ namespace CustomGameModes.Patches
             {
                 if (CustomModeSelectApi.CustomModeButtons.Count <= currentIndex)
                 {
-                    Plugin.LogInfo(LogType.Warning, "CustomModeButtons index out of bounds.");
+                    ModLogger.Log("CustomModeButtons index out of bounds.", LogType.Warning);
                 }
                 else
                 {

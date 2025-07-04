@@ -1,4 +1,6 @@
 ﻿using CustomGameModes;
+using CustomGameModes.Patches;
+using Il2CppInterop.Runtime.Injection;
 using PlayFab.DataModels;
 using System;
 using System.Collections.Generic;
@@ -17,17 +19,17 @@ namespace CustomGameModes.Utility
     {
         static Dictionary<string, Sprite> LoadedSprites;
 
-        public static UIButton AddButtonComponent(GameObject newObject)
+        public static Button AddButtonComponent(GameObject newObject)
         {
             newObject.GetOrAddComponent<GraphicRaycaster>();
-            return newObject.GetOrAddComponent<UIButton>();
+            return newObject.GetOrAddComponent<Button>();
         }
 
         private static GameObject CreateButton(GameObject parent, string name, Rect rect, string text)
         {
             GameObject newObject = new GameObject(name);
             newObject.transform.SetParent(parent.transform);
-            var button = newObject.GetOrAddComponent<UIButton>();
+            var button = newObject.GetOrAddComponent<Button>();
 
             var raycaster = newObject.GetOrAddComponent<GraphicRaycaster>();
 
@@ -215,7 +217,7 @@ namespace CustomGameModes.Utility
             {
                 LoadedSprites = new Dictionary<string, Sprite>();
             }
-            if (LoadedSprites.ContainsKey(spriteFilePath))
+            if (LoadedSprites.ContainsKey(spriteFilePath) && LoadedSprites[spriteFilePath] != null)
             {
                 return LoadedSprites[spriteFilePath];
             }
@@ -227,14 +229,14 @@ namespace CustomGameModes.Utility
             // otherwise, the file doesn't exist, log an error, and return null (or hopefully a small transparent sprite
             else
             {
-                Plugin.LogInfo(LogType.Error, "Could not find file: " + spriteFilePath);
+                ModLogger.Log("Could not find file: " + spriteFilePath, LogType.Error);
                 // Instead of null, could I have this return just a 1x1 transparent sprite or something?
 
                 // Creates a transparent 2x2 texture, and returns that as the sprite
-#if TAIKO_MONO
+#if IL2CPP
+                Texture2D tex = new Texture2D(2, 2, TextureFormat.ARGB32, false);
+#elif MONO
                 Texture2D tex = new Texture2D(2, 2, TextureFormat.ARGB32, 1, false);
-#else
-                Texture2D tex = new Texture2D(2, 2, TextureFormat.ARGB32, 1, false, IntPtr.Zero);
 #endif
 
                 Color fillColor = Color.clear;
@@ -601,7 +603,7 @@ namespace CustomGameModes.Utility
 
 
             // Fill Content
-#if TAIKO_MONO
+#if MONO
             dropdownDropdown.AddOptions(options);
 #else
             var il2cppOptions = new Il2CppSystem.Collections.Generic.List<string>();
@@ -690,23 +692,22 @@ namespace CustomGameModes.Utility
 
         static private Sprite LoadSpriteFromFile(string spriteFilePath)
         {
-#if TAIKO_MONO
-            Texture2D tex = new Texture2D(2, 2, TextureFormat.ARGB32, 1, false);
-#else
+#if IL2CPP
             Texture2D tex = new Texture2D(2, 2, TextureFormat.ARGB32, 1, false, IntPtr.Zero);
+#elif MONO
+            Texture2D tex = new Texture2D(2, 2, TextureFormat.ARGB32, 1, false);
 #endif
-
             if (!File.Exists(spriteFilePath))
             {
                 Plugin.Log.LogError("Could not find file: " + spriteFilePath);
-                //return null;
             }
             else
             {
-#if TAIKO_MONO
-                tex.LoadImage(File.ReadAllBytes(spriteFilePath));
-#else
+#if IL2CPP
+                //tex.LoadRawTextureDataImplArray(File.ReadAllBytes(spriteFilePath));
                 ImageConversion.LoadImage(tex, File.ReadAllBytes(spriteFilePath));
+#elif MONO
+                tex.LoadImage(File.ReadAllBytes(spriteFilePath));
 #endif
             }
 
@@ -816,21 +817,39 @@ namespace CustomGameModes.Utility
         }
     }
 
-    public class UIButton : Button
-    {
-        public UnityEngine.Events.UnityEvent onRightClick = new UnityEngine.Events.UnityEvent();
-        public override void OnPointerClick(PointerEventData eventData)
-        {
-            if (eventData.button == PointerEventData.InputButton.Left)
-            {
-                // Invoke the left click event
-                base.OnPointerClick(eventData);
-            }
-            else if (eventData.button == PointerEventData.InputButton.Right)
-            {
-                // Invoke the right click event
-                onRightClick.Invoke();
-            }
-        }
-    }
+//    public class UIButton : Button
+//    {
+//#if IL2CPP
+//        static UIButton()
+//        {
+//            //IEnumerable<Type> interfaces = new List<Type>()
+//            //{ 
+//            //    typeof(Button),
+//            //    typeof(Selectable),
+//            //    typeof(UIBehaviour),
+//            //};
+//            //ClassInjector.RegisterTypeInIl2Cpp<UIButton>(new RegisterTypeOptions()
+//            //{
+//            //    Interfaces = new(interfaces)
+//            //});
+//            EnumInjector.RegisterEnumInIl2Cpp<SelectionState>();
+//            ClassInjector.RegisterTypeInIl2Cpp<UIButton>();
+//        }
+//#endif
+
+//        public UnityEngine.Events.UnityEvent onRightClick = new UnityEngine.Events.UnityEvent();
+//        public override void OnPointerClick(PointerEventData eventData)
+//        {
+//            if (eventData.button == PointerEventData.InputButton.Left)
+//            {
+//                // Invoke the left click event
+//                base.OnPointerClick(eventData);
+//            }
+//            else if (eventData.button == PointerEventData.InputButton.Right)
+//            {
+//                // Invoke the right click event
+//                onRightClick.Invoke();
+//            }
+//        }
+//    }
 }
