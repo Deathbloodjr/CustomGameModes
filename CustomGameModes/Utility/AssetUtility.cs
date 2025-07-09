@@ -1,6 +1,5 @@
 ﻿using CustomGameModes;
 using CustomGameModes.Patches;
-using Il2CppInterop.Runtime.Injection;
 using PlayFab.DataModels;
 using System;
 using System.Collections.Generic;
@@ -12,6 +11,9 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+#if IL2CPP
+using Il2CppInterop.Runtime.Injection;
+#endif
 
 namespace CustomGameModes.Utility
 {
